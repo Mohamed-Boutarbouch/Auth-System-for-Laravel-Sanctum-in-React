@@ -10,6 +10,10 @@ const VerifyEmail = () => {
     middleware: 'auth',
   });
 
+  const isVerificationLinkSent = Array.isArray(status)
+    ? status.includes('verification-link-sent')
+    : false;
+
   return (
     <GuestLayout>
       <AuthCard
@@ -24,7 +28,7 @@ const VerifyEmail = () => {
           clicking on the link we just emailed to you? If you didn&apos;t receive the email, we will
           gladly send you another.
         </div>
-        {authStatus === 'verification-link-sent' && (
+        {isVerificationLinkSent && (
           <div className="mb-4 font-medium text-sm text-green-600">
             A new verification link has been sent to the email address you provided during
             registration.
@@ -37,7 +41,7 @@ const VerifyEmail = () => {
           <button
             type="button"
             className="underline text-sm text-gray-600 hover:text-gray-900"
-            onClick={logout.mutate}
+            onClick={() => logout.mutate()}
           >
             Logout
           </button>

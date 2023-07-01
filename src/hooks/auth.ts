@@ -4,7 +4,7 @@ import axiosClient from '../services/axiosClient';
 import { AxiosError, isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 
-interface User {
+interface IUser {
   id: number;
   name: string;
   email: string;
@@ -12,6 +12,12 @@ interface User {
   created_at: string;
   updated_at: string;
 }
+
+interface IErrorQuery {
+  message: string;
+}
+
+type QueryResponse<T> = T | undefined;
 
 interface ErrorMutationInterface {
   message: string;
@@ -21,29 +27,27 @@ interface ErrorMutationInterface {
   };
 }
 
-export const useAuth = ({
-  middleware,
-  redirectIfAuthenticated,
-}: {
+interface IParms {
   middleware?: 'guest' | 'auth';
   redirectIfAuthenticated?: string;
-}) => {
+}
+
+export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const params = useParams();
   const [errorMessages, setErrorMessages] = useState<string[] | null>([]);
   const [status, setStatus] = useState<string[] | null>([]);
 
-  const user = useQuery({
+  const user = useQuery<QueryResponse<IUser>, AxiosError<IErrorQuery>>({
     queryKey: ['user'],
-    queryFn: async () => {
+    queryFn: async (): Promise<QueryResponse<IUser>> => {
       try {
-        const { data } = await axiosClient<User>('/user');
+        const { data } = await axiosClient<IUser>('/user');
         return data;
       } catch (error) {
         const err = error as AxiosError;
         if (err.response?.status !== 409) {
-          console.warn('ERROR');
           throw error;
         }
         navigate('/verify-email');
@@ -82,23 +86,6 @@ export const useAuth = ({
         setErrorMessages(errorMessages);
       }
     },
-    // onError: (error: AxiosError) => {
-    //   if (isAxiosError(error)) {
-    //     const err = error as AxiosError<RegisterErrorMutation>;
-    //     let errorMessages: string[] = [];
-
-    //     if (err.response?.data?.errors) {
-    //       const errorObject: { [key: string]: string[] } = err.response.data.errors;
-
-    //       Object.values(errorObject).forEach((messages) => {
-    //         errorMessages = errorMessages.concat(messages);
-    //         errorMessages = [...errorMessages, ...messages];
-    //       });
-    //     }
-
-    //     setErrorMessages(errorMessages);
-    //   }
-    // },
   });
 
   const login = useMutation({
@@ -174,13 +161,13 @@ export const useAuth = ({
     },
   });
 
-  // const resendEmailVerification = useMutation({
-  //   mutationFn: () => {
-  //     axiosClient
-  //       .post('/email/verification-notification')
-  //       .then((response) => setStatus(response.data.status));
-  //   },
-  // });
+  const resendEmailVerification = useMutation({
+    mutationFn: async () => {
+      axiosClient
+        .post('/email/verification-notification')
+        .then((response) => setStatus(response.data.status));
+    },
+  });
 
   const logout = useMutation({
     mutationFn: async () => {
@@ -217,7 +204,7 @@ export const useAuth = ({
     login,
     forgotPassword,
     resetPassword,
-    // resendEmailVerification,
+    resendEmailVerification,
     logout,
     errorMessages,
     status,
