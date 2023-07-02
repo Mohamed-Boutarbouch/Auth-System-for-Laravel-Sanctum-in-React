@@ -4,46 +4,31 @@ import axiosClient from '../services/axiosClient';
 import { AxiosError, isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 
-interface IUser {
-  id: number;
-  name: string;
-  email: string;
-  email_verified_at: string;
-  created_at: string;
-  updated_at: string;
-}
+import {
+  ErrorMutation,
+  ErrorQuery,
+  ForgotPasswordParams,
+  LoginParams,
+  Params,
+  QueryResponse,
+  RegisterParams,
+  ResendEmailVerificationParams,
+  ResetPasswordParams,
+  User,
+} from './auth-types';
 
-interface IErrorQuery {
-  message: string;
-}
-
-type QueryResponse<T> = T | undefined;
-
-interface ErrorMutationInterface {
-  message: string;
-  errors: {
-    email?: string[];
-    password?: string[];
-  };
-}
-
-interface IParms {
-  middleware?: 'guest' | 'auth';
-  redirectIfAuthenticated?: string;
-}
-
-export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
+export const useAuth = ({ middleware, redirectIfAuthenticated }: Params) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const params = useParams();
+  const [status, setStatus] = useState<string | null>('');
   const [errorMessages, setErrorMessages] = useState<string[] | null>([]);
-  const [status, setStatus] = useState<string[] | null>([]);
 
-  const user = useQuery<QueryResponse<IUser>, AxiosError<IErrorQuery>>({
+  const user = useQuery<QueryResponse<User>, ErrorQuery>({
     queryKey: ['user'],
-    queryFn: async (): Promise<QueryResponse<IUser>> => {
+    queryFn: async (): Promise<QueryResponse<User>> => {
       try {
-        const { data } = await axiosClient<IUser>('/user');
+        const { data } = await axiosClient<User>('/user');
         return data;
       } catch (error) {
         const err = error as AxiosError;
@@ -61,25 +46,18 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
 
   const fetchCsrfToken = () => axiosClient.get('/csrf-cookie');
 
-  const register = useMutation({
-    mutationFn: async ({
-      ...props
-    }: {
-      name: string;
-      email: string;
-      password: string;
-      password_confirmation: string;
-    }) => {
+  const register = useMutation<void, ErrorMutation, RegisterParams>({
+    mutationFn: async (props) => {
       await fetchCsrfToken();
 
       setErrorMessages([]);
 
       await axiosClient.post('/register', props);
-      user?.refetch();
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user'] }),
     onError: (error: AxiosError) => {
       if (isAxiosError(error)) {
-        const err = error as AxiosError<ErrorMutationInterface>;
+        const err = error as ErrorMutation;
         const errorMessages = err.response?.data?.errors
           ? Object.values(err.response.data.errors).flat()
           : [];
@@ -88,8 +66,8 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
     },
   });
 
-  const login = useMutation({
-    mutationFn: async ({ ...props }: { email: string; password: string; remember: boolean }) => {
+  const login = useMutation<void, ErrorMutation, LoginParams>({
+    mutationFn: async (props) => {
       await fetchCsrfToken();
 
       setErrorMessages([]);
@@ -98,10 +76,10 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
       await axiosClient.post('/login', props);
       await user?.refetch();
     },
-    onSuccess: () => queryClient.invalidateQueries(['user']),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user'] }),
     onError: (error: AxiosError) => {
       if (isAxiosError(error)) {
-        const err = error as AxiosError<ErrorMutationInterface>;
+        const err = error as ErrorMutation;
         const errorMessages = err.response?.data?.errors
           ? Object.values(err.response.data.errors).flat()
           : [];
@@ -110,19 +88,19 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
     },
   });
 
-  const forgotPassword = useMutation({
-    mutationFn: async ({ email }: { email: string }) => {
+  const forgotPassword = useMutation<void, ErrorMutation, ForgotPasswordParams>({
+    mutationFn: async (prop) => {
       await fetchCsrfToken();
 
       setErrorMessages([]);
       setStatus(null);
 
-      const response = await axiosClient.post('/forgot-password', { email });
-      console.log(response.data.status);
+      const { data } = await axiosClient.post('/forgot-password', prop);
+      setStatus(data.status);
     },
     onError: (error: AxiosError) => {
       if (isAxiosError(error)) {
-        const err = error as AxiosError<ErrorMutationInterface>;
+        const err = error as ErrorMutation;
         const errorMessages = err.response?.data?.errors
           ? Object.values(err.response.data.errors).flat()
           : [];
@@ -131,14 +109,8 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
     },
   });
 
-  const resetPassword = useMutation({
-    mutationFn: async ({
-      ...props
-    }: {
-      email: string;
-      password: string;
-      password_confirmation: string;
-    }) => {
+  const resetPassword = useMutation<void, ErrorMutation, ResetPasswordParams>({
+    mutationFn: async (props) => {
       await fetchCsrfToken();
 
       setErrorMessages([]);
@@ -152,7 +124,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
     },
     onError: (error: AxiosError) => {
       if (isAxiosError(error)) {
-        const err = error as AxiosError<ErrorMutationInterface>;
+        const err = error as ErrorMutation;
         const errorMessages = err.response?.data?.errors
           ? Object.values(err.response.data.errors).flat()
           : [];
@@ -161,11 +133,10 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
     },
   });
 
-  const resendEmailVerification = useMutation({
+  const resendEmailVerification = useMutation<void, unknown, ResendEmailVerificationParams>({
     mutationFn: async () => {
-      axiosClient
-        .post('/email/verification-notification')
-        .then((response) => setStatus(response.data.status));
+      const { data } = await axiosClient.post('/email/verification-notification');
+      setStatus(data.status);
     },
   });
 
@@ -177,7 +148,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
       }
       navigate('/');
     },
-    onSuccess: () => queryClient.removeQueries(['user']),
+    onSuccess: () => queryClient.removeQueries({ queryKey: ['user'] }),
   });
 
   useEffect(() => {
@@ -194,8 +165,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
     if (middleware === 'auth' && user?.error) {
       logout.mutate();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.data, user?.error]);
+  }, [user?.data, user?.error, logout, navigate, middleware, redirectIfAuthenticated]);
 
   return {
     user,
@@ -208,5 +178,6 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: IParms) => {
     logout,
     errorMessages,
     status,
+    setStatus,
   };
 };

@@ -6,13 +6,9 @@ import { useAuth } from '../hooks/auth';
 import { Link } from 'react-router-dom';
 
 const VerifyEmail = () => {
-  const { logout, resendEmailVerification, status } = useAuth({
+  const { logout, resendEmailVerification, status, setStatus } = useAuth({
     middleware: 'auth',
   });
-
-  const isVerificationLinkSent = Array.isArray(status)
-    ? status.includes('verification-link-sent')
-    : false;
 
   return (
     <GuestLayout>
@@ -28,14 +24,14 @@ const VerifyEmail = () => {
           clicking on the link we just emailed to you? If you didn&apos;t receive the email, we will
           gladly send you another.
         </div>
-        {isVerificationLinkSent && (
+        {status === 'verification-link-sent' && (
           <div className="mb-4 font-medium text-sm text-green-600">
             A new verification link has been sent to the email address you provided during
             registration.
           </div>
         )}
         <div className="mt-4 flex items-center justify-between">
-          <Button onClick={() => resendEmailVerification.mutate({ status })}>
+          <Button onClick={() => resendEmailVerification.mutate({ setStatus })}>
             Resend Verification Email
           </Button>
           <button
