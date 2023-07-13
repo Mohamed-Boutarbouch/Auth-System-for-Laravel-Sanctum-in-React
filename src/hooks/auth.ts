@@ -146,7 +146,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: Params) => {
         await fetchCsrfToken();
         await axiosClient.post('/logout');
       }
-      navigate('/');
+      window.location.pathname = '/login';
     },
     onSuccess: () => queryClient.removeQueries({ queryKey: ['user'] }),
   });
